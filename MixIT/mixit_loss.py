@@ -16,4 +16,16 @@ def mixit_loss(source_mix_pairs, est_sources):
   B, M, T = est_sources.shape
   device = est_sources.device
 
+  # 마스크 탐색 코드
+  all_masks = torch.arange(1, 2 ** M, device=device)
+  best_loss = torch.full((B, ), 1e9, device=device)
+
+  for mask in all_masks:
+    mask_bits = ((mask >> torch.arange(M, device=device)) & 1).float()
+    mask_bits = mask_bits.view(1, M, 1)
+    group1 = torch.sum(est_sources * mask_bits, dim = 1)
+    group2 = torch.sum(est_sources * (1-mask_bits), dim = 1)
+    loss = -si_snr(source_mix_pairs[:,0], group1) - si_snr(source_mix_pairs[:,1], group2)
+    best_loss = torch.minimum(best_loss, loss)
   
+  return best_loss.mean()
