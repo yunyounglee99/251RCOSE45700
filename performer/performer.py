@@ -1,13 +1,26 @@
 import torch
 from performer_pytorch import Performer
 
-model = Performer(
-  dim = 512,
-  depth = 1,
-  heads = 8,
-  causal = True
-)
+class PerformerSeperator(nn.Module):
+  def __init__(
+      self,
+      freq_bins : int,     # Mel 대역 수
+      n_masks : int,      # 출력 마스크 개수 M
+      dim : int = 256,     # 모델 차원
+      depth : int = 6,     #레이어 수
+      heads : int = 8,     #어텐션 헤드 수
+      nb_features : int = 128,     #random feature 수
+      max_seq_len : int = 512     # 최대 시퀀스 길이
+  ):
+    super().__init__()
 
-# example일 뿐입니다.
-x = torch.randn(1, 2048, 512)
-model(x)
+    self.performer = Performer(
+      dim = dim,
+      depth = depth,
+      heads = heads,
+      causal = False,
+      nb_features = nb_features,
+      generalized_attention = False,
+      kernel_fn = None,
+      max_seq_len = max_seq_len
+    )
