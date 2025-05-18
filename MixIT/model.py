@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from performer.performer import PerformerSeperator
+from utils import UpsampleBlock
 
 class MixITModel(nn.Module):
   def __init__(self, 
@@ -22,10 +23,20 @@ class MixITModel(nn.Module):
       nb_features = performer_nb_features,
       max_seq_len = performer_max_seq_len
     )
+    self.upsample_block = None
 
-  def forward(self, mel, mixture_waveform):
+  def forward(self, mel, mixture_waveform, device):
     masks = self.seperater(mel)
+    B, M, T_mel = masks.shape
+    T = mixture_waveform[-1]
+
+    if (self.upsample_block is None) or (self.upsample_block.upsample.weight.shape[-1] != (T // T_mel) * 2):
+      self.upsample_block = UpsampleBlock(T_mel, T, M).to(device)
+
+    masks = self.upsample_block(masks)
+
     masks_4d = masks.unsqueeze(2)     # (B, M, 1, T)
-    mel_sources = masks_4d * mel.unsqueeze(1)     # (B, M, F, T)
+    mel_up = F.interpolate(mel, size=T, mode='linear', align_corners=False)     # (B, F, T)
+    mel_sources = masks_4d * mel_up.unsqueeze(1)     # (B, M, F, T)
 
     return masks, mel_sources
