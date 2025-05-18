@@ -14,6 +14,10 @@ class PerformerSeperator(nn.Module):
       max_seq_len : int = 512     # 최대 시퀀스 길이
   ):
     super().__init__()
+    # freq -> emb
+    self.to_emb = nn.Linear(freq_bins, dim)
+    # pos emb
+    self.pos_emb = nn.Parameter(torch.randn(1, max_seq_len, dim))
 
     self.performer = Performer(
       dim = dim,
@@ -27,9 +31,17 @@ class PerformerSeperator(nn.Module):
     )
     self.to_mask = nn.Linear(dim, n_masks)
 
-    def forward(self, mel: torch.Tensor):
-      """
-      mel : (B, F, T)
-      returns masks : (B, M, T)
-      """
-      
+  def forward(self, mel: torch.Tensor):
+    """
+    mel : (B, F, T)
+    returns masks : (B, M, T)
+    """
+    B, F, T = mel.shape
+    x = mel.permute(0, 2, 1)     #(B, T, F)
+    x = self.to_emb(x) + self.pos_emb[:, :, T]
+    x = self.performer(x)
+
+    mask_logits = self.to_mask(x)
+    masks = torch.sigmoid(mask_logits)
+    
+    return masks.permute(0, 2, 1)
