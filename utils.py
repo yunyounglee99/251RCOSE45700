@@ -1,5 +1,6 @@
 import torch
 import torchaudio
+import torch.nn as nn
 
 def wav_to_mel(wav, sr=16000, n_mels=80, n_fft=1024, hop_length=256):
   single = False
@@ -33,3 +34,27 @@ def mel_to_wav(mel, sr=16000, n_fft=1024, hop_length=256, n_iter=32):
   if single:
     wav = wav.squeeze(0)
   return wav
+
+class UpsampleBlock(nn.Module):
+    def __init__(self, in_len, out_len, channels):
+        super().__init__()
+        scale = out_len // in_len
+        kernel_size = scale * 2
+        stride = scale
+        padding = scale // 2
+        expected_len = (in_len - 1) * stride - 2 * padding + kernel_size
+        output_padding = out_len - expected_len
+        assert output_padding >= 0 and output_padding < stride, \
+            f"Invalid output_padding: {output_padding}"
+        
+        self.upsample = nn.ConvTranspose1d(
+            channels, channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            output_padding=output_padding
+        )
+
+    def forward(self, x):
+        # x: (B, N, T_mel)
+        return self.upsample(x)
