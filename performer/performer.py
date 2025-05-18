@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from performer_pytorch import Performer
 
 class PerformerSeperator(nn.Module):
@@ -24,3 +25,11 @@ class PerformerSeperator(nn.Module):
       kernel_fn = None,
       max_seq_len = max_seq_len
     )
+    self.to_mask = nn.Linear(dim, n_masks)
+
+    def forward(self, mel: torch.Tensor):
+      """
+      mel : (B, F, T)
+      returns masks : (B, M, T)
+      """
+      
