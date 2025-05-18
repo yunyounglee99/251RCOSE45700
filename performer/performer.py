@@ -14,7 +14,7 @@ class PerformerSeperator(nn.Module):
       max_seq_len : int = 512     # 최대 시퀀스 길이
   ):
     super().__init__()
-    # freq -> emb
+    # freq -> emb (Audio MAE로 변경 예정)
     self.to_emb = nn.Linear(freq_bins, dim)
     
     self.performer = Performer(
