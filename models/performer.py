@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from performer_pytorch import Performer
 
+
 class PerformerSeperator(nn.Module):
   def __init__(
       self,
@@ -11,11 +12,13 @@ class PerformerSeperator(nn.Module):
       depth : int = 6,     #레이어 수
       heads : int = 8,     #어텐션 헤드 수
       nb_features : int = 128,     #random feature 수
-      max_seq_len : int = 512     # 최대 시퀀스 길이
+      max_seq_len : int = 512,     # 최대 시퀀스 길이      
   ):
     super().__init__()
+    #==============변경 예정=====================
     # freq -> emb (Audio MAE로 변경 예정)
     self.to_emb = nn.Linear(freq_bins, dim)
+    #==========================================
     
     self.performer = Performer(
       dim = dim,
