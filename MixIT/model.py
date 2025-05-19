@@ -67,11 +67,7 @@ class MixITModel(nn.Module):
 
       masks = self.upsample_block(masks)
 
-      masks_4d = masks.unsqueeze(2)     # (B, M, 1, T)
-      mel_up = F.interpolate(mel, size=T, mode='linear', align_corners=False)     # (B, F, T)
-      mel_sources = masks_4d * mel_up.unsqueeze(1)     # (B, M, F, T)
-
-      return masks, mel_sources
+      return masks
     if self.model_type == 'convtasnet':
       est_sources = self.seperator(mixture_waveform)
-      return est_sources, None
+      return est_sources
