@@ -1,8 +1,8 @@
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from performer.performer import PerformerSeperator
-from MixIT.mixit_loss import mixit_loss
+from models.performer import PerformerSeperator
+from MixIT.Loss.mixit_loss import mixit_loss
 from MixIT.model import MixITModel
 from dataset import MoMDataset
 from utils import wav_to_mel
@@ -19,6 +19,7 @@ dataset = MoMDataset(root="./audio", segment_sec = 10.0, sr=SR)
 loader = DataLoader(dataset, batch_size = BATCH_SIZE, shuffle=True, num_workers=2, drop_last=True)
 
 model = MixITModel(
+  model_type='performer',
   freq_bins=FREQ_BINS,
   n_masks=N_MASKS,
   performer_dim=256,
