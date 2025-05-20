@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from performer_pytorch import Performer
+import timm
 
 
 class PerformerSeperator(nn.Module):
@@ -15,11 +16,15 @@ class PerformerSeperator(nn.Module):
       max_seq_len : int = 512,     # 최대 시퀀스 길이      
   ):
     super().__init__()
-    #==============변경 예정=====================
-    # freq -> emb (Audio MAE로 변경 예정)
-    self.to_emb = nn.Linear(freq_bins, dim)
-    #==========================================
-    
+
+    # Audio MAE encoder
+    self.encoder = timm.create_model(
+      'hf_hub:gaunernst/vit_base_patch16_1024_128.audiomae_as2m',
+      pretrained = True,
+      num_classes = 0
+    )
+    self.encoder.eval()
+
     self.performer = Performer(
       dim = dim,
       depth = depth,
@@ -38,8 +43,10 @@ class PerformerSeperator(nn.Module):
     returns masks : (B, M, T)
     """
     B, F, T = mel.shape
-    x = mel.permute(0, 2, 1)     #(B, T, F)
-    x = self.to_emb(x)
+    
+    with torch.no_grad():
+      x = self.encoder(mel)
+
     x = self.performer(x)
 
     mask_logits = self.to_mask(x)
