@@ -48,7 +48,7 @@ def train(
         root_dir=root,
         sample_rate=sr,
         silence_thresh=1e-4,
-        segment_length=segment_sec,
+        segment_sec=segment_sec,
         max_retry=10,
     )
   loader = DataLoader(dataset, batch_size =batch_size, shuffle=True, num_workers=2, drop_last=True)
