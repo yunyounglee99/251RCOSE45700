@@ -6,7 +6,7 @@ from MixIT.Loss.mixit_loss import mixit_loss
 from MixIT.Loss.diversity_loss import diversity_loss
 from MixIT.Loss.sparsity_loss import sparsity_loss
 from MixIT.model import MixITModel
-from dataset import MoMDataset
+from dataloader import MoMDataset
 from utils import wav_to_mel
 from tqdm import tqdm
 
