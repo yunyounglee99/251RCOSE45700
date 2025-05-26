@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -51,7 +52,7 @@ def train(
         segment_sec=segment_sec,
         max_retry=10,
     )
-  loader = DataLoader(dataset, batch_size =batch_size, shuffle=True, num_workers=2, drop_last=True)
+  loader = DataLoader(dataset, batch_size =batch_size, shuffle=True, num_workers=4, drop_last=True)
   for i, (mom, x_pair) in enumerate(loader):
         print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
         if i >= 1:
@@ -129,3 +130,16 @@ def train(
 
   torch.save(model.state_dict(), save_path)
   print(f'Model saved to {save_path}')
+
+if __name__ == "__main__":
+    os.environ["CUDA_VISIBLE_DEVICES"]="7"
+    train(
+        root        = "/home/aikusrv02/yunyoung/251RCOSE45700/data/mixtures",
+        lr          = 3e-4,
+        batch_size  = 4,
+        epochs      = 100,
+        segment_sec = 2.0,        # ← 초 단위
+        model_type  = "performer",
+        save_path   = "mixit_performer.pth",
+        debug_print = True
+    )
