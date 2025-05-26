@@ -106,7 +106,7 @@ class MixtureOfMixturesDataset(Dataset):
     
 if __name__ == "__main__":
     # ─── 설정 ────────────────────────────────────
-    ROOT_DIR      = "/content/drive/MyDrive/딥러닝 팀프로젝트/mixtures/2_stems"
+    ROOT_DIR      = "/Users/nyoung/Library/CloudStorage/GoogleDrive-kembel0116@gmail.com/내 드라이브/딥러닝 팀프로젝트/mixtures"
     SAMPLE_RATE   = 16000
     SEGMENT_LEN   = 32000    # 예: 2초 분량
     BATCH_SIZE    = 4
