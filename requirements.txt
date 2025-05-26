@@ -1,5 +1,6 @@
 axial_positional_embedding==0.3.12
 certifi==2025.4.26
+cffi==1.17.1
 charset-normalizer==3.4.2
 einops==0.8.1
 filelock==3.18.0
@@ -16,10 +17,12 @@ numpy==2.2.5
 packaging==25.0
 performer-pytorch==1.1.4
 pillow==11.2.1
+pycparser==2.22
 PyYAML==6.0.2
 requests==2.32.3
 safetensors==0.5.3
 setuptools==78.1.1
+soundfile==0.13.1
 sympy==1.14.0
 timm==1.0.15
 torch==2.7.0
