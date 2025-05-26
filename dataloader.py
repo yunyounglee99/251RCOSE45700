@@ -23,7 +23,7 @@ class MoMDataset(Dataset):
         root_dir: str,
         sample_rate: int = 16000,
         silence_thresh: float = 1e-4,
-        segment_length: int = 16000,
+        segment_sec: int = 1.0,
         max_retry: int = 10,
     ):
         """
@@ -43,7 +43,7 @@ class MoMDataset(Dataset):
 
         self.sr             = sample_rate
         self.silence_thresh = silence_thresh
-        self.segment_length = segment_length
+        self.segment_length = int(segment_sec * sample_rate)
         self.max_retry      = max_retry
 
     def _load_and_preprocess(self, path: str) -> torch.Tensor:
