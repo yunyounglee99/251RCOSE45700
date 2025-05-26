@@ -1,6 +1,6 @@
 import torch
 import torchaudio
-from performer.performer import Performer
+from models.performer import Performer
 from MixIT.model import PerformerSeperator
 from utils import wav_to_mel, mel_to_wav
 

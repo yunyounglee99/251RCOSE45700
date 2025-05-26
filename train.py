@@ -122,13 +122,10 @@ def train(
         optimizer.step()
 
         total_loss += loss.item()
-        total_mixit += loss_mixit.item()
-        total_div += loss_div.item()
-        total_sparse += loss_sparsity.item()
 
       else:
         raise ValueError("Unknown model_type. Choose 'performer' or 'convtasnet'.")
-    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f} = {(total_mixit/len(loader)):.4f}(mixit) + {(total_div/len(loader)):.4f}(div) + {(total_sparse/len(loader)):.4f}')
+    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f}')
 
   torch.save(model.state_dict(), save_path)
   print(f'Model saved to {save_path}')
