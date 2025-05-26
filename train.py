@@ -44,8 +44,18 @@ def train(
   if device is None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-  dataset = MoMDataset(root = root, segment_sec=segment_sec, sr=sr)
+  dataset = MoMDataset(
+        root_dir=root,
+        sample_rate=sr,
+        silence_thresh=1e-4,
+        segment_length=segment_sec,
+        max_retry=10,
+    )
   loader = DataLoader(dataset, batch_size =batch_size, shuffle=True, num_workers=2, drop_last=True)
+  for i, (mom, x_pair) in enumerate(loader):
+        print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
+        if i >= 1:
+            break
 
   model = MixITModel(
     model_type=model_type,
