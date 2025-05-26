@@ -17,7 +17,7 @@ import torchaudio
 torchaudio.set_audio_backend('soundfile')
 
 
-class MixtureOfMixturesDataset(Dataset):
+class MoMDataset(Dataset):
     def __init__(
         self,
         root_dir: str,
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     NUM_WORKERS   = 2
     # ────────────────────────────────────────────
 
-    ds = MixtureOfMixturesDataset(
+    ds = MoMDataset(
         root_dir=ROOT_DIR,
         sample_rate=SAMPLE_RATE,
         silence_thresh=1e-4,
