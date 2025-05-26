@@ -104,7 +104,8 @@ class MoMDataset(Dataset):
         x_pair = torch.cat([x1, x2], dim=0)             # [2, L]
 
         return mom, x_pair
-    
+
+'''
 if __name__ == "__main__":
     # ─── 설정 ────────────────────────────────────
     ROOT_DIR      = "/Users/nyoung/Library/CloudStorage/GoogleDrive-kembel0116@gmail.com/내 드라이브/딥러닝 팀프로젝트/mixtures"
@@ -134,3 +135,5 @@ if __name__ == "__main__":
         print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
         if i >= 1:
             break
+
+'''  
