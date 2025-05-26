@@ -23,7 +23,7 @@ class MoMDataset(Dataset):
         root_dir: str,
         sample_rate: int = 16000,
         silence_thresh: float = 1e-4,
-        segment_sec: int = 1.0,
+        segment_sec: float = 1.0,
         max_retry: int = 10,
     ):
         """

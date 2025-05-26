@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchaudio
 from torchaudio.models import ConvTasNet
 
-class ConvtasnetSeperator(nn.Moudle):
+class ConvtasnetSeperator(nn.Module):
   def __init__(
       self,
       num_sources: int = 8,
