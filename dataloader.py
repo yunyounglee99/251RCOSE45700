@@ -14,6 +14,7 @@ import random
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
+torchaudio.set_audio_backend('soundfile')
 
 
 class MixtureOfMixturesDataset(Dataset):
