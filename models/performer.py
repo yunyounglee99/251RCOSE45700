@@ -29,11 +29,13 @@ class PerformerSeperator(nn.Module):
       dim = dim,
       depth = depth,
       heads = heads,
+      dim_head=dim/heads,
       causal = False,
-      # nb_features = nb_features,
-      # generalized_attention = False,
-      # kernel_fn = None,
-      # max_seq_len = max_seq_len
+      nb_features = nb_features,
+      generalized_attention = False,
+      kernel_fn = None,
+      max_seq_len = max_seq_len,
+      device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     )
     self.to_mask = nn.Linear(dim, n_masks)
 
