@@ -1,2 +1,5 @@
 .DS_Store
 /data
+/__pycache__
+/models/__pycache__
+/MixIT/__pycache__
