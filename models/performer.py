@@ -30,10 +30,10 @@ class PerformerSeperator(nn.Module):
       depth = depth,
       heads = heads,
       causal = False,
-      nb_features = nb_features,
-      generalized_attention = False,
-      kernel_fn = None,
-      max_seq_len = max_seq_len
+      # nb_features = nb_features,
+      # generalized_attention = False,
+      # kernel_fn = None,
+      # max_seq_len = max_seq_len
     )
     self.to_mask = nn.Linear(dim, n_masks)
 
