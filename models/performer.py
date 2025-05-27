@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from performer_pytorch import Performer
+from performer_pytorch.performer_pytorch import Performer
 import timm
 
 
@@ -33,9 +33,7 @@ class PerformerSeperator(nn.Module):
       causal = False,
       nb_features = nb_features,
       generalized_attention = False,
-      kernel_fn = None,
-      max_seq_len = max_seq_len,
-      device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+      kernel_fn = None
     )
     self.to_mask = nn.Linear(dim, n_masks)
 
