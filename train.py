@@ -5,6 +5,7 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = ""
 
 import torch
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from models.performer import PerformerSeperator
 from MixIT.Loss.mixit_loss import mixit_loss
@@ -20,7 +21,7 @@ def train(
     lr,
     batch_size,
     epochs,
-    mixit_treshold = 50,
+    mixit_treshold = 20,
     segment_sec:float=10.0,
     sr=16000,
     # <performer> 
@@ -42,7 +43,7 @@ def train(
     msk_num_stacks: int = 3,
     msk_activate: str = 'sigmoid',
     lambda_div=0.1,
-    lambda_sparsity=0.05,
+    lambda_sparsity=0.1,
     model_type='performer',
     save_path='trackformer.pth',
     device=None
@@ -107,6 +108,7 @@ def train(
   model.to(device)
 
   optimizer = optim.Adam(model.parameters(), lr = lr)
+  scheduler = ReduceLROnPlateau(optimizer, mode = 'min', factor=0.5, patience = 5, verbose=True)
 
   for epoch in tqdm(range(epochs)):
     model.train()
@@ -120,7 +122,8 @@ def train(
 
       if model_type == 'performer':
         # print(f'before converting : {mom_wav.shape}')
-        mom_mel = wav_to_mel(mom_wav, sr=sr)
+        mom_mel = wav_to_mel(mom_wav, sr=sr, n_mels=128, hop_length=160)
+        mom_mel = mom_mel.permute(0, 1, 3, 2)
         # print(f'mom_mel shape : {mom_mel.shape}')
         masks = model(mom_mel, mom_wav, device)
 
@@ -158,17 +161,22 @@ def train(
       else:
         raise ValueError("Unknown model_type. Choose 'performer' or 'convtasnet'.")
     print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f} = mixit ({total_mixit/len(loader):.4f}) + div ({total_div/len(loader):.4f}) + sparse ({total_sparse/len(loader):.4f})')
+    avg_loss = total_loss/len(loader)
+
+    scheduler.step(avg_loss)
+    current_lr = optimizer.param_groups[0]['lr']
+    print(f'Current LR : {current_lr:.2e}')
 
   torch.save(model.state_dict(), save_path)
   print(f'Model saved to {save_path}')
 
 if __name__ == "__main__":
     train(
-        root        = "/home/aikusrv02/yunyoung/251RCOSE45700/data/mixtures",
-        lr          = 3e-4,
-        batch_size  = 4,
-        epochs      = 100,
-        segment_sec = 2.0,
+        root        = "/home/aikusrv02/yunyoung/251RCOSE45700/data/mixtures/4_stems",
+        lr          = 1e-4,
+        batch_size  = 2,
+        epochs      = 60,
+        segment_sec = 10.0,
         model_type  = "performer",
         save_path   = "mixit_performer.pth"
     )
