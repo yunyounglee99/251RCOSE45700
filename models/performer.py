@@ -9,22 +9,20 @@ def resize_mel_for_audiomae(mel):
   """mel을 AudioMAE 입력 크기로 조정"""
   B, C, H, W = mel.shape  # (4, 1, 80, 126)
   target_H, target_W = 1024, 128
-  print(f'B : {B} C : {C} H : {H}, W : {W}')
+  # print(f'B : {B} C : {C} H : {H}, W : {W}')
   
   # Width만 먼저 조정 (시간 축)
   if W != target_W:
       mel = F.interpolate(mel, size=(target_H, target_W), mode='bilinear', align_corners=False)
-      print(f'after interpolation : {mel.shape}')
+      # print(f'after interpolation : {mel.shape}')
 
       B, C, H, W = mel.shape
-      # (4, 1, 80, 126) → (4, 1, 80, 128)
   
   # Height를 패딩으로 확장 (주파수 축)
   if H < target_H:
       padding = target_H - H
       mel = F.pad(mel, (0, 0, 0, padding), mode='constant', value=0)
-      print(f'after padding : {mel.shape}')
-      # (4, 1, 80, 128) → (4, 1, 1024, 128)
+      # print(f'after padding : {mel.shape}')
   
   return mel  # (4, 1, 1024, 128)
 
@@ -71,17 +69,17 @@ class PerformerSeperator(nn.Module):
 
       if hasattr(self.encoder, 'pos_embed'):
          x = x + self.encoder.pos_embed[:, 1:]
-         print('successfully add pos_embed!')
+         # print('successfully add pos_embed!')
 
       x = self.encoder.pos_drop(x)
 
-    print(f'after mae shape : {x.shape}')
+    # print(f'after mae shape : {x.shape}')
 
     x = self.performer(x)
-    print(f'after performer shape : {x.shape}')
+    # print(f'after performer shape : {x.shape}')
 
     mask_logits = self.to_mask(x)
-    print(f'after mask shape : {mask_logits.shape}')
+    # print(f'after mask shape : {mask_logits.shape}')
     masks = torch.sigmoid(mask_logits)
     
     return masks.permute(0, 2, 1)
