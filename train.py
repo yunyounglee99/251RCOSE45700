@@ -1,4 +1,8 @@
 import os
+
+os.environ["CUDA_VISIBLE_DEVICES"]="7"
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = ""
+
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -21,11 +25,11 @@ def train(
     # <performer> 
     freq_bins=80, 
     n_masks=8,
-    performer_dim = 256,
+    performer_dim = 768,
     performer_depth = 6,
     performer_heads = 8,
     performer_nb_features = 128,
-    performer_max_seq_len = 512,
+    performer_max_seq_len = 1024,
     # <convtasnet>
     num_sources: int = 8,
     enc_kernel_size: int = 16,
@@ -44,6 +48,8 @@ def train(
 ):
   if device is None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cpu')
+    print(device)
 
   dataset = MoMDataset(
         root_dir=root,
@@ -52,7 +58,22 @@ def train(
         segment_sec=segment_sec,
         max_retry=10,
     )
-  loader = DataLoader(dataset, batch_size =batch_size, shuffle=True, num_workers=4, drop_last=True)
+  
+  if device.type == 'cuda':
+     generator = torch.Generator(device='cuda')
+     generator.manual_seed(42)
+  else:
+     generator = torch.Generator()
+     generator.manual_seed(42)
+
+  loader = DataLoader(
+     dataset, 
+     batch_size =batch_size, 
+     shuffle=True, 
+     # generator=generator,
+     num_workers=0, 
+     drop_last=True)
+  
   for i, (mom, x_pair) in enumerate(loader):
         print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
         if i >= 1:
@@ -78,7 +99,11 @@ def train(
     msk_num_layers = msk_num_layers,
     msk_num_stacks = msk_num_stacks,
     msk_activate = msk_activate
-  ).to(device)
+  )
+
+  torch.set_default_tensor_type('torch.FloatTensor')
+
+  model.to(device)
 
   optimizer = optim.Adam(model.parameters(), lr = lr)
 
@@ -93,7 +118,9 @@ def train(
       pair_wav = pair_wav.to(device)
 
       if model_type == 'performer':
+        print(f'before converting : {mom_wav.shape}')
         mom_mel = wav_to_mel(mom_wav, sr=sr)
+        print(f'mom_mel shape : {mom_mel.shape}')
         masks = model(mom_mel, mom_wav, device)
 
         est_sources = masks * mom_wav.unsqueeze(1)
@@ -132,7 +159,6 @@ def train(
   print(f'Model saved to {save_path}')
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"]="7"
     train(
         root        = "/home/aikusrv02/yunyoung/251RCOSE45700/data/mixtures",
         lr          = 3e-4,
