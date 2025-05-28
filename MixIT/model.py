@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from models.performer import PerformerSeperator
 from models.convtasnet import ConvtasnetSeperator
-from utils import UpsampleBlock
+# from utils import UpsampleBlock
 
 class MixITModel(nn.Module):
   def __init__(
@@ -40,7 +40,7 @@ class MixITModel(nn.Module):
         nb_features = performer_nb_features,
         max_seq_len = performer_max_seq_len
       )
-      self.upsample_block = None
+
     elif self.model_type == 'convtasnet':
       self.seperator = ConvtasnetSeperator(
         num_sources=num_sources,
@@ -60,12 +60,14 @@ class MixITModel(nn.Module):
     if self.model_type == 'performer':
       masks = self.seperator(mel)
       B, M, T_mel = masks.shape
-      T = mixture_waveform[-1]
+      T = mixture_waveform.shape[-1]
 
-      if (self.upsample_block is None) or (self.upsample_block.upsample.weight.shape[-1] != (T // T_mel) * 2):
-        self.upsample_block = UpsampleBlock(T_mel, T, M).to(device)
-
-      masks = self.upsample_block(masks)
+      masks = F.interpolate(
+        masks,
+        size = T,
+        mode = 'linear',
+        align_corners=False
+      )
 
       return masks
     if self.model_type == 'convtasnet':
