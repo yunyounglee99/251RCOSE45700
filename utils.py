@@ -7,10 +7,19 @@ def wav_to_mel(wav, sr=16000, n_mels=80, n_fft=1024, hop_length=256):
   if len(wav.shape) == 1:
     wav = wav.unsqueeze(0)
     single = True
+  
+  if wav.dim() == 3 and wav.shape[1] == 1:
+        wav = wav.squeeze(1)
+
   mel_transform = torchaudio.transforms.MelSpectrogram(
     sample_rate=sr, n_mels = n_mels, n_fft=n_fft, hop_length=hop_length
-  )
+  ).to(wav.device)
+
   mel = mel_transform(wav)
+
+  if mel.dim() == 3:
+     mel = mel.unsqueeze(1)
+
   if single:
     mel = mel.squeeze(0)
 
@@ -21,6 +30,10 @@ def mel_to_wav(mel, sr=16000, n_fft=1024, hop_length=256, n_iter=32):
   if len(mel.shape) == 2:
     mel = mel.unsqueeze(0)
     single = True
+
+  if mel.dim() == 4 and mel.shape[1] == 1:
+        mel = mel.squeeze(1)
+
   mel_transform = torchaudio.transforms.MelSpectrogram(
     sample_rate=sr, n_mels=mel.shape[1], n_fft=n_fft, hop_length=hop_length
   )
