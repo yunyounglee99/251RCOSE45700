@@ -64,9 +64,8 @@ class PerformerSeperator(nn.Module):
     """
     mel = resize_mel_for_audiomae(mel)
 
+    x = self.encoder.patch_embed(mel)
     with torch.no_grad():
-      x = self.encoder.patch_embed(mel)
-
       if hasattr(self.encoder, 'pos_embed'):
          x = x + self.encoder.pos_embed[:, 1:]
          # print('successfully add pos_embed!')

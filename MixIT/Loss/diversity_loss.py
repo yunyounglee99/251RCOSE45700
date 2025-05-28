@@ -6,11 +6,8 @@ def diversity_loss(masks):
   loss = 0.0
 
   for b in range(B):
-    norm_masks = F.normalize(masks[b], p=2, dim=-1)
-    sim = torch.matmul(norm_masks, norm_masks.T)
-
-    off_diag = sim - torch.eye(N, device = masks.device)
-    loss += off_diag.abs().sum()
-  
-  return loss    # batch norm 할지 고민중
+    x = F.normalize(masks[b], p=2, dim=-1)      # (N,T)
+    sim = (x @ x.T).abs()                       # (N,N)
+    loss += (sim.sum() - sim.diag().sum()) / (N * (N-1))
+  return loss / B
   
