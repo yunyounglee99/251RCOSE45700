@@ -20,6 +20,7 @@ def train(
     lr,
     batch_size,
     epochs,
+    mixit_treshold = 50,
     segment_sec:float=10.0,
     sr=16000,
     # <performer> 
@@ -125,7 +126,7 @@ def train(
 
         est_sources = masks * mom_wav
 
-        loss_mixit = mixit_loss(pair_wav, est_sources)
+        loss_mixit = mixit_loss(pair_wav, est_sources, threshold=mixit_treshold)
         loss_div = diversity_loss(masks)
         loss_sparsity = sparsity_loss(est_sources, mom_wav)
 
@@ -150,10 +151,13 @@ def train(
         optimizer.step()
 
         total_loss += loss.item()
+        total_mixit = total_loss
+        total_div = 0
+        total_sparse = 0
 
       else:
         raise ValueError("Unknown model_type. Choose 'performer' or 'convtasnet'.")
-    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f}')
+    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f} = mixit ({total_mixit/len(loader):.4f}) + div ({total_div/len(loader):.4f}) + sparse ({total_sparse/len(loader):.4f})')
 
   torch.save(model.state_dict(), save_path)
   print(f'Model saved to {save_path}')
