@@ -1,12 +1,3 @@
-"""
-from google.colab import drive
-
-drive.mount('/content/drive')
-%cd '/content/drive/MyDrive/딥러닝 팀프로젝트/mixtures'
-%ls
-%cd '2_stems'
-%ls
-"""
 import os
 import glob
 import random
