@@ -118,12 +118,12 @@ def train(
       pair_wav = pair_wav.to(device)
 
       if model_type == 'performer':
-        print(f'before converting : {mom_wav.shape}')
+        # print(f'before converting : {mom_wav.shape}')
         mom_mel = wav_to_mel(mom_wav, sr=sr)
-        print(f'mom_mel shape : {mom_mel.shape}')
+        # print(f'mom_mel shape : {mom_mel.shape}')
         masks = model(mom_mel, mom_wav, device)
 
-        est_sources = masks * mom_wav.unsqueeze(1)
+        est_sources = masks * mom_wav
 
         loss_mixit = mixit_loss(pair_wav, est_sources)
         loss_div = diversity_loss(masks)
