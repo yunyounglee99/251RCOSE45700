@@ -13,7 +13,7 @@ from MixIT.Loss.diversity_loss import diversity_loss
 from MixIT.Loss.sparsity_loss import sparsity_loss
 from MixIT.model import MixITModel
 from dataloader import MoMDataset
-from utils import wav_to_mel
+from utils import wav_to_mel, UpsampleBlock
 from tqdm import tqdm
 
 def train(
@@ -21,7 +21,7 @@ def train(
     lr,
     batch_size,
     epochs,
-    mixit_treshold = 20,
+    mixit_treshold = 30,
     segment_sec:float=10.0,
     sr=16000,
     # <performer> 
@@ -48,6 +48,7 @@ def train(
     save_path='trackformer.pth',
     device=None
 ):
+  upsampler = None
   if device is None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cpu')
@@ -127,7 +128,17 @@ def train(
         # print(f'mom_mel shape : {mom_mel.shape}')
         masks = model(mom_mel, mom_wav, device)
 
-        est_sources = masks * mom_wav
+        B, M, T_mel = masks.shape
+        T_wav = mom_wav.shape[-1]
+        if upsampler is None:
+           upsampler = UpsampleBlock(
+              in_len = T_mel,
+              out_len=T_wav,
+              channels = M
+           ).to(device)
+
+        masks_wav = upsampler(masks)
+        est_sources = masks_wav * mom_wav
 
         loss_mixit = mixit_loss(pair_wav, est_sources, threshold=mixit_treshold)
         loss_div = diversity_loss(masks)
@@ -175,7 +186,7 @@ if __name__ == "__main__":
         root        = "/home/aikusrv02/yunyoung/251RCOSE45700/data/mixtures/4_stems",
         lr          = 1e-4,
         batch_size  = 2,
-        epochs      = 60,
+        epochs      = 30,
         segment_sec = 10.0,
         model_type  = "performer",
         save_path   = "mixit_performer.pth"
