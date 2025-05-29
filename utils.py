@@ -49,6 +49,43 @@ def mel_to_wav(mel, sr=16000, n_fft=1024, hop_length=256, n_iter=32):
   return wav
 
 class UpsampleBlock(nn.Module):
+   def __init__(self, in_len: int, out_len: int, channels: int, max_scale_per_layer: int = 8):
+      super().__init__()
+      if out_len %in_len != 0:
+         raise ValueError("out_len must be integer multiple of in_len")
+      
+      total_scale = out_len // in_len
+      factors = []
+      s = total_scale
+      while s > 1:
+         f = min(max_scale_per_layer, s if s < max else max_scale_per_layer)
+         if s % f != 0:
+            f = 2
+         factors.append(f)
+         s //= f
+
+      layers = []
+      cur_len = in_len
+      for f in factors:
+         next_len = cur_len * f
+         k, st, pad = f * 2, f, f //2
+         layers.append(
+            nn.ConvTranspose1d(
+               channels, channels, kernel_size=k, stride = st, padding = pad, bias = False
+            )
+         )
+         cur_len = next_len
+      self.net = nn.Sequential(*layers)
+
+      for m in self.net:
+         nn.init.kaiming_normal_(m.weight, nonlinearity='linear')
+
+   def forward(self, x):
+      return self.net(x)
+
+
+"""
+class UpsampleBlock(nn.Module):
     def __init__(self, in_len, out_len, channels):
         super().__init__()
         scale = out_len // in_len
@@ -71,3 +108,5 @@ class UpsampleBlock(nn.Module):
     def forward(self, x):
         # x: (B, N, T_mel)
         return self.upsample(x)
+
+"""
