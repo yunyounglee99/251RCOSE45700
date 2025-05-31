@@ -7,6 +7,7 @@ def mixit_loss(source_mix_pairs, est_sources, threshold=10, eps=1e-8):
     threshold        : 최대 SNR (dB) -> tau = 10^(-threshold/10)
     eps              : 수치 안정성을 위한 작은 값
     """
+    print(f'est_sources shape : {est_sources.shape}')
     B, M, T = est_sources.shape
     device = est_sources.device
 
