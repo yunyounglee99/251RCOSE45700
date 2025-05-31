@@ -4,3 +4,4 @@ __pycache__
 models/__pycache__
 MixIT/__pycache__
 Loss/__pycache__
+mixit_performer.pth
