@@ -37,7 +37,7 @@ def parse_args():
     # ─── Data & I/O ──────────────────────────────────────────────────────────────
     parser.add_argument("--root", type=str, required=True,
                         help="혼합 오디오(.wav)들이 있는 최상위 폴더 경로")
-    parser.add_argument("--save_path", type=str, default="ddp_trackformer.pth",
+    parser.add_argument("--save_path", type=str, default="mixit_trackformer.pth",
                         help="학습된 모델 파라미터를 저장할 경로")
     parser.add_argument("--model_type", type=str, default="performer",
                         choices=["performer", "convtasnet"],
@@ -46,8 +46,8 @@ def parse_args():
     # ─── 학습 하이퍼파라미터 ────────────────────────────────────────────────────
     parser.add_argument("--batch_size", type=int, default=2,
                         help="GPU 1장당 배치 사이즈. 총 배치 = batch_size × world_size")
-    parser.add_argument("--epochs", type=int, default=60,
-                        help="전체 학습 epoch 수")
+    parser.add_argument("--epochs", type=int, default=30,
+                        help="전체 학습 epoch 수") 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="초기 학습률")
     parser.add_argument("--mixit_threshold", type=float, default=10.0,
