@@ -6,6 +6,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 import os
+
+os.environ["CUDA_VISIBLE_DEVICES"]="7"
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = ""
+os.environ['CUDA_DEVICE_ORDER']="PCI_BUS_ID"
+
 import argparse
 import random
 import torch
