@@ -7,7 +7,7 @@
 
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"]="7"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,7"
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = ""
 os.environ['CUDA_DEVICE_ORDER']="PCI_BUS_ID"
 
@@ -107,7 +107,7 @@ def parse_args():
                         help="무음 기준 임계값")
     parser.add_argument("--max_retry", type=int, default=10,
                         help="무음 파일 재시도 횟수")
-    parser.add_argument("--max_workers", type=int, default=4,
+    parser.add_argument("--max_workers", type=int, default=0,
                         help="DataLoader num_workers")
 
     return parser.parse_args()
@@ -157,10 +157,15 @@ def ddp_worker(local_rank, world_size, args):
         dataset,
         batch_size=args.batch_size,
         sampler=sampler,
-        num_workers=args.max_workers,
+        num_workers=0,
         drop_last=True,
         pin_memory=True
     )
+
+    for i, (mom, x_pair) in enumerate(dataloader):
+            print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
+            if i >= 1:
+                break
 
     # ── 4. 모델 생성 및 DDP 래핑 ──────────────────────────────────────────────
     model = MixITModel(
@@ -193,7 +198,7 @@ def ddp_worker(local_rank, world_size, args):
         model,
         device_ids=[local_rank],      # 이 프로세스가 사용할 GPU
         output_device=local_rank,     # 결과(gradient reduction 등)를 모을 GPU
-        find_unused_parameters=False  # 사용되지 않는 파라미터 추적 끄기(성능 향상)
+        find_unused_parameters=True  # 사용되지 않는 파라미터 추적 끄기(성능 향상)
     )
 
     # ── 5. 옵티마이저, 스케줄러 설정 ────────────────────────────────────────────
@@ -207,7 +212,7 @@ def ddp_worker(local_rank, world_size, args):
     upsampler = None  # 모델.module.upsampler로 attachment할 예정
 
     # ── 7. 메인 학습 루프 ─────────────────────────────────────────────────────
-    for epoch in range(args.epochs):
+    for epoch in tqdm(range(args.epochs), desc="Epoch", leave=True):
         model.train()
         epoch_loss = 0.0
         epoch_mixit = 0.0
@@ -217,13 +222,15 @@ def ddp_worker(local_rank, world_size, args):
         # DistributedSampler 사용 시 매 epoch마다 set_epoch() 호출
         sampler.set_epoch(epoch)
 
+        """
         # tqdm progress bar (프로세스마다 출력하지 않고, rank 0에서만 출력하도록)
         if local_rank == 0:
             pbar = tqdm(dataloader, desc=f"Epoch[{epoch+1}/{args.epochs}]")
         else:
             pbar = dataloader
+        """
 
-        for mom_wav, pair_wav in pbar:
+        for mom_wav, pair_wav in dataloader:
             # ── 7.1. 데이터 GPU에 올리기 ───────────────────────────────────────
             mom_wav = mom_wav.to(device)      # (B,1,T_wav)
             pair_wav = pair_wav.to(device)    # (B,2,T_wav)
@@ -249,7 +256,7 @@ def ddp_worker(local_rank, world_size, args):
                 masks_wav = model.module.upsampler(masks)
 
                 # 5) 마스크 × wav → 분리된 source 파형 (B, M, T_wav)
-                est_sources = masks_wav * mom_wav.unsqueeze(1)
+                est_sources = masks_wav * mom_wav
 
                 # 6) Loss 계산
                 loss_mix = mixit_loss(pair_wav, est_sources, threshold=args.mixit_threshold)
@@ -298,23 +305,16 @@ def ddp_worker(local_rank, world_size, args):
     # ── 10. 프로세스 그룹 종료 ──────────────────────────────────────────────
     dist.destroy_process_group()
 
-
+# -------- train.py --------
 def main():
-    """
-    1. argparse로 인자 파싱  
-    2. torch.cuda.device_count() 만큼 프로세스 spawn  
-    """
     args = parse_args()
 
-    # 사용할 GPU 개수 (예: CUDA_VISIBLE_DEVICES="0,1,2,3"이면 4)
-    world_size = torch.cuda.device_count()
-    if world_size == 0:
-        raise RuntimeError("CUDA 디바이스가 감지되지 않습니다!")
+    # torchrun이 넣어준 env에서 rank 정보 가져오기
+    local_rank = int(os.environ["LOCAL_RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
 
-    # torch.multiprocessing.spawn을 통해 프로세스를 world_size(S=GPU개수)만큼 띄워서
-    # 각 프로세스마다 local_rank(0 ~ S-1)를 인자로 ddp_worker에 전달
-    mp.spawn(ddp_worker, args=(world_size, args), nprocs=world_size, join=True)
-
+    # 그냥 한 번만 호출
+    ddp_worker(local_rank, world_size, args)
 
 if __name__ == "__main__":
     main()
