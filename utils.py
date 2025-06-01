@@ -110,3 +110,27 @@ class UpsampleBlock(nn.Module):
         return self.upsample(x)
 
 """
+
+import torch
+
+def si_snr(ref, est, eps=1e-8):
+    """
+    Scale-Invariant SNR  (B, T) or (B, 1, T) 텐서 지원
+    """
+    ref = ref - ref.mean(dim=-1, keepdim=True)
+    est = est - est.mean(dim=-1, keepdim=True)
+
+    # projektion
+    proj = (est * ref).sum(-1, keepdim=True) * ref / (ref ** 2).sum(-1, keepdim=True).clamp_min(eps)
+    noise = est - proj
+    ratio = (proj ** 2).sum(-1) / (noise ** 2).sum(-1).clamp_min(eps)
+    return 10 * torch.log10(ratio.clamp_min(eps))
+
+def si_snr_improvement(mixture, est, ref):
+    """
+    mixture : (B, T) (2소스 혼합 or 원 믹스)
+    est     : (B, T) (모델이 예측한 단일/복수 그룹)
+    ref     : (B, T) (GT 단일 소스) ─ MixIT 학습에선 실제로는 없음.
+    반환     : SI-SNR(est, ref) − SI-SNR(mixture, ref)
+    """
+    return si_snr(ref, est) - si_snr(ref, mixture)
