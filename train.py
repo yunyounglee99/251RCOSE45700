@@ -30,7 +30,7 @@ from MixIT.Loss.mixit_loss import mixit_loss
 from MixIT.Loss.diversity_loss import diversity_loss
 from MixIT.Loss.sparsity_loss import sparsity_loss
 from dataloader import MoMDataset
-from utils import wav_to_mel, UpsampleBlock
+from utils import wav_to_mel, UpsampleBlock, si_snr
 
 
 def parse_args():
@@ -203,7 +203,7 @@ def ddp_worker(local_rank, world_size, args):
 
     # ── 5. 옵티마이저, 스케줄러 설정 ────────────────────────────────────────────
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=50, verbose=True)
 
     # ── 6. UpsampleBlock 생성 (한 번만) ────────────────────────────────────────
     #    - Performer 분기마다 in_len, out_len, channels가 달라질 수 있으므로
@@ -218,6 +218,8 @@ def ddp_worker(local_rank, world_size, args):
         epoch_mixit = 0.0
         epoch_div = 0.0
         epoch_sparse = 0.0
+        ep_sisnr = 0.0            # ← 추가 / 위치 이동
+        eval_batches = 0  
 
         # DistributedSampler 사용 시 매 epoch마다 set_epoch() 호출
         sampler.set_epoch(epoch)
@@ -282,15 +284,41 @@ def ddp_worker(local_rank, world_size, args):
                 epoch_div += loss_div.item()
                 epoch_sparse += loss_sp.item()
 
+            with torch.no_grad():
+                B, M, T = est_sources.shape
+                bits = torch.arange(1, 2**M - 1, device=device)
+                mask_mat = ((bits[:, None] >> torch.arange(M, device=device)) & 1).float()  # (C,M)
+                C = mask_mat.size(0)
+
+                est = est_sources.unsqueeze(1)                       # (B,1,M,T)
+                g1 = (est * mask_mat.view(1, C, M, 1)).sum(2)        # (B,C,T)
+                g2 = (est * (1-mask_mat).view(1, C, M, 1)).sum(2)    # (B,C,T)
+
+                mix1, mix2 = pair_wav[:, 0], pair_wav[:, 1]          # (B,T)
+
+                sisnr1 = si_snr(mix1.unsqueeze(1).expand(-1, C, -1), g1)  # (B,C)
+                sisnr2 = si_snr(mix2.unsqueeze(1).expand(-1, C, -1), g2)
+                sisnr_mean = (sisnr1 + sisnr2) / 2                   # (B,C)
+
+                best_idx = torch.argmax(sisnr_mean, dim=1)           # (B,)
+                best1 = g1[torch.arange(B, device=device), best_idx] # (B,T)
+                best2 = g2[torch.arange(B, device=device), best_idx]
+
+                batch_sisnr = (si_snr(mix1, best1) + si_snr(mix2, best2)) / 2
+                ep_sisnr += batch_sisnr.mean().item()
+                eval_batches += 1
+
         # ── 8. 에포크 종료 후 로그 및 스케줄러 업데이트 ───────────────────────────
         avg_loss = epoch_loss / len(dataloader)
         if local_rank == 0:
             if args.model_type == "performer":
                 print(f"[Rank {local_rank}] Epoch {epoch+1}/{args.epochs} "
                       f"TotalLoss={avg_loss:.4f}  MixIT={epoch_mixit/len(dataloader):.4f}  "
-                      f"Div={epoch_div/len(dataloader):.4f}  Sparse={epoch_sparse/len(dataloader):.4f}")
+                      f"Div={epoch_div/len(dataloader):.4f}  Sparse={epoch_sparse/len(dataloader):.4f}"
+                      f"SI-SNR={ep_sisnr/eval_batches:.2f} dB")
             else:
-                print(f"[Rank {local_rank}] Epoch {epoch+1}/{args.epochs} TotalLoss={avg_loss:.4f}")
+                print(f"[Rank {local_rank}] Epoch {epoch+1}/{args.epochs} TotalLoss={avg_loss:.4f}"
+                      f"SI-SNR={ep_sisnr/eval_batches:.2f} dB")
 
         # Scheduler step (DDP에서는 rank 0만 하면 충분)
         if local_rank == 0:
