@@ -1,6 +1,17 @@
 import torch
+import librosa
 import torchaudio
 import torch.nn as nn
+
+def pitch_shift(waveform, sample_rate, n_steps):
+  waveform_np = waveform.squeeze().cpu().numpy()
+  shifted = librosa.effects.pitch_shift(waveform_np, sr=sample_rate, n_steps=n_steps)
+  return torch.from_numpy(shifted).unsqueeze(0)
+
+def time_stretch(waveform, stretch_factor):
+  waveform_np = waveform.squeeze().cpu().numpy()
+  stretched = librosa.effects.time_stretch(waveform_np, rate=stretch_factor)
+  return torch.from_numpy(stretched).unsqueeze(0)
 
 def wav_to_mel(wav, sr=16000, n_mels=80, n_fft=1024, hop_length=256):
   single = False

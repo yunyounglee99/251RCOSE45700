@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from performer_pytorch import Performer
+from performer_pytorch.performer_pytorch import FixedPositionalEmbedding
 import timm
 
 def resize_mel_for_audiomae(mel):
@@ -39,21 +40,16 @@ class PerformerSeperator(nn.Module):
       max_seq_len : int = 1024,     # 최대 시퀀스 길이      
   ):
     super().__init__()
-
-    # Audio MAE encoder
-    self.encoder = timm.create_model(
-      'hf_hub:gaunernst/vit_base_patch16_1024_128.audiomae_as2m',
-      pretrained = True,
-      num_classes = 0
-    )
-    self.encoder.eval()
-
     self.performer = Performer(
       dim = dim,
       depth = depth,
       heads = heads,
-      dim_head = dim//heads
+      dim_head = dim//heads,
     )
+    
+    self.input_proj = nn.Linear(freq_bins, dim)
+
+    self.pos_emb = FixedPositionalEmbedding(dim, max_seq_len)
 
     self.to_mask = nn.Linear(dim, n_masks)
 
@@ -62,18 +58,14 @@ class PerformerSeperator(nn.Module):
     mel : (B, F, T)
     returns masks : (B, M, T)
     """
-    mel = resize_mel_for_audiomae(mel)
+    if mel.dim()==4 and mel.shape[1]==1:
+       mel = mel.squeeze(1)
 
-    x = self.encoder.patch_embed(mel)
-    with torch.no_grad():
-      if hasattr(self.encoder, 'pos_embed'):
-         x = x + self.encoder.pos_embed[:, 1:]
-         # print('successfully add pos_embed!')
+    x = mel.permute(0,2,1)
+    x = self.input_proj(x)
 
-      x = self.encoder.pos_drop(x)
-
-    # print(f'after mae shape : {x.shape}')
-
+    pe = self.pos_emb(x)
+    x = x + pe
     x = self.performer(x)
     # print(f'after performer shape : {x.shape}')
 

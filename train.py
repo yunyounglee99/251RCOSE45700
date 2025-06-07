@@ -19,6 +19,7 @@ import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
@@ -55,7 +56,7 @@ def parse_args():
                         help="전체 학습 epoch 수") 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="초기 학습률")
-    parser.add_argument("--mixit_threshold", type=float, default=10.0,
+    parser.add_argument("--mixit_threshold", type=float, default=30.0,
                         help="mixit_loss 내부에서 사용하는 threshold")
     parser.add_argument("--lambda_div", type=float, default=0.1,
                         help="diversity loss 가중치")
@@ -203,7 +204,18 @@ def ddp_worker(local_rank, world_size, args):
 
     # ── 5. 옵티마이저, 스케줄러 설정 ────────────────────────────────────────────
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=50, verbose=True)
+    # --- Warm-up + Cosine ---------------------------------------------------- 
+    warmup_iters   = 1_000                       #   <-- 필요한 만큼 조정
+    total_iters    = args.epochs * len(dataloader)
+
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[
+            LinearLR(optimizer, start_factor=0.1, total_iters=warmup_iters),  # warm-up
+            CosineAnnealingLR(optimizer, T_max=total_iters - warmup_iters, eta_min=args.lr * 1e-2)
+        ],
+        milestones=[warmup_iters]
+    )
 
     # ── 6. UpsampleBlock 생성 (한 번만) ────────────────────────────────────────
     #    - Performer 분기마다 in_len, out_len, channels가 달라질 수 있으므로
@@ -257,6 +269,8 @@ def ddp_worker(local_rank, world_size, args):
                 # 4) mel-domain → wav-domain 마스크 (B, M, T_wav)
                 masks_wav = model.module.upsampler(masks)
 
+                masks_wav = masks_wav / (masks_wav.sum(1, keepdim=True) + 1e-8)
+
                 # 5) 마스크 × wav → 분리된 source 파형 (B, M, T_wav)
                 est_sources = masks_wav * mom_wav
 
@@ -276,6 +290,8 @@ def ddp_worker(local_rank, world_size, args):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+            scheduler.step()
 
             # 7.3. 누적 손실 산정 (CPU로 옮김)
             epoch_loss += loss.item()
@@ -319,10 +335,6 @@ def ddp_worker(local_rank, world_size, args):
             else:
                 print(f"[Rank {local_rank}] Epoch {epoch+1}/{args.epochs} TotalLoss={avg_loss:.4f}"
                       f"SI-SNR={ep_sisnr/eval_batches:.2f} dB")
-
-        # Scheduler step (DDP에서는 rank 0만 하면 충분)
-        if local_rank == 0:
-            scheduler.step(avg_loss)
 
     # ── 9. 학습 완료 후 모델 저장 ───────────────────────────────────────────
     if local_rank == 0:

@@ -3,6 +3,7 @@ import glob
 import random
 
 import torch
+from utils import pitch_shift, time_stretch
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
 torchaudio.set_audio_backend('soundfile')
@@ -95,36 +96,3 @@ class MoMDataset(Dataset):
         x_pair = torch.cat([x1, x2], dim=0)             # [2, L]
 
         return mom, x_pair
-
-'''
-if __name__ == "__main__":
-    # ─── 설정 ────────────────────────────────────
-    ROOT_DIR      = "/Users/nyoung/Library/CloudStorage/GoogleDrive-kembel0116@gmail.com/내 드라이브/딥러닝 팀프로젝트/mixtures"
-    SAMPLE_RATE   = 16000
-    SEGMENT_LEN   = 32000    # 예: 2초 분량
-    BATCH_SIZE    = 4
-    NUM_WORKERS   = 2
-    # ────────────────────────────────────────────
-
-    ds = MoMDataset(
-        root_dir=ROOT_DIR,
-        sample_rate=SAMPLE_RATE,
-        silence_thresh=1e-4,
-        segment_length=SEGMENT_LEN,
-        max_retry=10,
-    )
-    loader = DataLoader(
-        ds,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=NUM_WORKERS,
-        pin_memory=True,
-    )
-
-    # 테스트 출력
-    for i, (mom, x_pair) in enumerate(loader):
-        print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
-        if i >= 1:
-            break
-
-'''  
