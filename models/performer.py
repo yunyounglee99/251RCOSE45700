@@ -48,6 +48,8 @@ class PerformerSeperator(nn.Module):
     )
     
     self.input_proj = nn.Linear(freq_bins, dim)
+    self.dropout = nn.Dropout(0.1)
+    self.norm = nn.LayerNorm(dim)
 
     self.pos_emb = FixedPositionalEmbedding(dim, max_seq_len)
 
@@ -65,7 +67,8 @@ class PerformerSeperator(nn.Module):
     x = self.input_proj(x)
 
     pe = self.pos_emb(x)
-    x = x + pe
+    x = self.norm(x + pe)
+    x = self.dropout(x)
     x = self.performer(x)
     # print(f'after performer shape : {x.shape}')
 
