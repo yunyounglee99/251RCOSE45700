@@ -169,6 +169,8 @@ def ddp_worker(local_rank, world_size, args):
                 break
 
     # ── 4. 모델 생성 및 DDP 래핑 ──────────────────────────────────────────────
+    
+    
     model = MixITModel(
         model_type=args.model_type,
         # Performer 인자
@@ -205,7 +207,7 @@ def ddp_worker(local_rank, world_size, args):
     # ── 5. 옵티마이저, 스케줄러 설정 ────────────────────────────────────────────
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # --- Warm-up + Cosine ---------------------------------------------------- 
-    warmup_iters   = 1_000                       #   <-- 필요한 만큼 조정
+    warmup_iters   = 20                       #   <-- 필요한 만큼 조정
     total_iters    = args.epochs * len(dataloader)
 
     scheduler = SequentialLR(
@@ -253,7 +255,7 @@ def ddp_worker(local_rank, world_size, args):
                 # 1) mel 변환
                 mom_mel = wav_to_mel(mom_wav, sr=args.sr, n_mels=args.freq_bins, hop_length=int(0.016*args.sr))
                 # 모양: (B, freq_bins, T_mel) → PerformerSeperator 인풋 형태 (B, 1, T_mel, freq_bins)
-                mom_mel = mom_mel.permute(0, 1, 3, 2)  # (B, 1, T_mel, freq_bins)
+                # mom_mel = mom_mel.permute(0, 1, 3, 2)  # (B, 1, T_mel, freq_bins)
 
                 # 2) DDP 래핑된 모델 forward → mel-domain mask (B, M, T_mel)
                 masks = model(mom_mel, mom_wav, device)
@@ -315,7 +317,6 @@ def ddp_worker(local_rank, world_size, args):
                 sisnr1 = si_snr(mix1.unsqueeze(1).expand(-1, C, -1), g1)  # (B,C)
                 sisnr2 = si_snr(mix2.unsqueeze(1).expand(-1, C, -1), g2)
                 sisnr_mean = (sisnr1 + sisnr2) / 2                   # (B,C)
-
                 best_idx = torch.argmax(sisnr_mean, dim=1)           # (B,)
                 best1 = g1[torch.arange(B, device=device), best_idx] # (B,T)
                 best2 = g2[torch.arange(B, device=device), best_idx]
