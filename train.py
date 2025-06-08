@@ -169,7 +169,8 @@ def ddp_worker(local_rank, world_size, args):
                 break
 
     # ── 4. 모델 생성 및 DDP 래핑 ──────────────────────────────────────────────
-    
+    mel_hop = args.hop_length
+    mel_frames = int(args.segment_sec * args.sr / mel_hop)
     
     model = MixITModel(
         model_type=args.model_type,
@@ -180,7 +181,7 @@ def ddp_worker(local_rank, world_size, args):
         performer_depth=args.performer_depth,
         performer_heads=args.performer_heads,
         performer_nb_features=args.performer_nb_features,
-        performer_max_seq_len=args.performer_max_seq_len,
+        performer_max_seq_len=mel_frames,
         # ConvTasNet 인자
         num_sources=args.num_sources,
         enc_kernel_size=args.enc_kernel_size,
