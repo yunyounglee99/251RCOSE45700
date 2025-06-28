@@ -62,7 +62,11 @@ def train(
         max_retry=10,
     )
 
-  
+  test_len  = int(len(full_dataset) * 0.2)
+  train_len = len(full_dataset) - test_len
+  g = torch.Generator().manual_seed(42)
+
+  '''
   if device.type == 'cuda':
      generator = torch.Generator(device='cuda')
      generator.manual_seed(42)
@@ -77,6 +81,11 @@ def train(
      # generator=generator,
      num_workers=0, 
      drop_last=True)
+  '''
+  train_set, val_set, test_set = random_split(dataset,[train_len, test_len], generator=g)
+  print(f"Dataset split → train:{train_len}, val:{val_len}, test:{test_len}")
+  train_loader = DataLoader(train_set, batch_size=batch_size,shuffle=True,  num_workers=0, drop_last=True)
+  test_loader  = DataLoader(test_set,  batch_size=batch_size,shuffle=False, num_workers=0)
   
   for i, (mom, x_pair) in enumerate(loader):
         print(f"Batch {i}: mom {mom.shape}, x_pair {x_pair.shape}")
@@ -118,7 +127,7 @@ def train(
     total_mixit = 0
     total_div = 0
     total_sparse = 0
-    for mom_wav, pair_wav in loader:
+    for mom_wav, pair_wav in train_loader:
       mom_wav = mom_wav.to(device)
       pair_wav = pair_wav.to(device)
 
@@ -172,8 +181,8 @@ def train(
 
       else:
         raise ValueError("Unknown model_type. Choose 'performer' or 'convtasnet'.")
-    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(loader):.4f} = mixit ({total_mixit/len(loader):.4f}) + div ({total_div/len(loader):.4f}) + sparse ({total_sparse/len(loader):.4f})')
-    avg_loss = total_loss/len(loader)
+    print(f'Epoch {epoch+1}/{epochs} Total loss = {total_loss/len(train_loader):.4f} = mixit ({total_mixit/len(train_loader):.4f}) + div ({total_div/len(train_loader):.4f}) + sparse ({total_sparse/len(train_loader):.4f})')
+    avg_loss = total_loss/len(train_loader)
 
     scheduler.step(avg_loss)
     current_lr = optimizer.param_groups[0]['lr']
@@ -181,6 +190,53 @@ def train(
 
   torch.save(model.state_dict(), save_path)
   print(f'Model saved to {save_path}')
+
+model.eval()
+
+test_total_loss   = 0.0
+test_total_mixit  = 0.0
+test_total_div    = 0.0
+test_total_sparse = 0.0
+
+with torch.no_grad():
+    for mom_wav, pair_wav in test_loader:
+        mom_wav  = mom_wav.to(device)
+        pair_wav = pair_wav.to(device)
+
+        if model_type == "performer":
+            mom_mel = wav_to_mel(mom_wav, sr=sr, n_mels=128, hop_length=160).permute(0, 1, 3, 2)
+            
+            masks = model(mom_mel, mom_wav, device)
+
+            B, M, T_mel = masks.shape
+            upsampler = UpsampleBlock(T_mel, mom_wav.shape[-1], M).to(device)
+            est_sources = upsampler(masks) * mom_wav
+
+            loss_mixit = mixit_loss(pair_wav, est_sources, threshold=mixit_treshold)
+            loss_div = diversity_loss(masks)
+            loss_sparse = sparsity_loss(est_sources, mom_wav)
+            loss = loss_mixit + lambda_div*loss_div + lambda_sparsity*loss_sparse
+
+        elif model_type == "convtasnet":
+            est_sources = model(None, mom_wav, device)
+            loss_mixit = loss = mixit_loss(pair_wav, est_sources)
+            loss_div = 0.0
+            loss_sparse = 0.0
+        else:
+            raise ValueError("Unknown model_type")
+
+        test_total_loss += loss.item()
+        test_total_mixit += loss_mixit.item()
+        test_total_div += (loss_div if isinstance(loss_div, float)
+                              else loss_div.item())
+        test_total_sparse += (loss_sparse if isinstance(loss_sparse, float)
+                              else loss_sparse.item())
+
+n_test = len(test_loader)
+print(f"[Test] total_loss={test_total_loss/n_test:.4f} | "
+      f"mixit={test_total_mixit/n_test:.4f} | "
+      f"div={test_total_div/n_test:.4f} | "
+      f"sparse={test_total_sparse/n_test:.4f}")
 
 if __name__ == "__main__":
     train(
