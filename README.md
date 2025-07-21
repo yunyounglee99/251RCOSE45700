@@ -1,86 +1,113 @@
-Trackformer: Self-Supervised Music Source Separation using performer
-
-Performer + MixIT + Audio MAE = Compact, context-aware music de-mixer
-
-⸻
-
-🔍 Overview
-
-MixPerformer is a self-supervised framework that swaps the CNN-based ConvTasNet separator in MixIT for a linear-attention Performer Transformer and jump-starts learning with Audio Masked Autoencoder (Audio MAE) pre-training. By combining global‐context attention with label-free MixIT training, MixPerformer separates up to four musical stems while cutting training time and GPU memory. ￼
-
-⸻
-
-🚨 Motivation
-•	Local-only CNN limits – ConvTasNet excels at short-range features but struggles with long rhythmic or harmonic structures typical of music. ￼
-•	Memory & scalability – ConvTasNet breaks on long (30 s) segments with CUDA OOM, blocking high-fidelity separation. ￼
-
-⸻
-
-🧠 Key Ideas
-
-Component	Role
-Performer encoder (12 layers, FAVOR+)	Linear O(L · r) attention captures long-range music context. ￼
-Audio MAE pre-training	Learns robust global audio tokens before MixIT fine-tuning. ￼
-MixIT loss	Matches any permutation of 8 soft-mask outputs to two mixtures—no labels required. ￼
-Auxiliary Diversity & Sparsity losses	Reduce mask overlap and encourage energy concentration without ground truth. ￼
+# Trackformer - Music Separation Using Self-Supervised Learning
 
 
-⸻
+A novel self-supervised learning framework for music source separation leveraging Transformer architectures, specifically Performer, to address limitations of local contextual processing inherent in existing CNN-based methods.
 
-🧪 Datasets & Protocols
-•	MOISESDB (≈ 500 h) – four-stem songs only. ￼
-•	Segment lengths : 3 s, 5 s, 10 s, 30 s. ￼
-•	Train / Val split : 80 % / 20 %. ￼
+## 🔍 Overview
 
-⸻
+**Music Separation Using SSL** is a Transformer-based self-supervised learning approach that replaces ConvTasNet with Performer enhanced by FAVOR+ for efficient global context learning from long audio sequences. The method eliminates reliance on labeled data by generating effective training signals using self-supervised techniques within the MixIT paradigm, while Audio Masked Autoencoder (Audio MAE) pre-training facilitates extraction of robust global audio features.
 
-⚙️ Implementation Details
-•	Masks (N) : 8 • Batch : 4 • LR : 1 e-4 → 1 e-5 cosine • Opt : AdamW (wd = 0.01) ￼
-•	Audio MAE : 30 % masking, 256 random features. ￼
-•	Hardware : single Tesla V100 32 GB. ￼
+## 🚨 Motivation
 
-⸻
+Traditional CNN-based audio separation approaches like ConvTasNet suffer from:
 
-🏆 Results
+- ⚠️ **Limited global context**: CNNs excel at local features but struggle with long-range dependencies essential for music (rhythm, melody, harmony)
+- ⚠️ **Memory constraints**: Cannot process very long audio sequences due to CUDA out-of-memory issues
+- ⚠️ **Dependency on labeled data**: Supervised methods require extensive labeled datasets, resulting in high costs and limited scalability
 
-Segment	ConvTasNet SI-SNR (dB)	Performer SI-SNR (dB)	Speed-up
-3 s	– 9.11	+1.66	1.36 × faster (17.1 → 12.6 min/epoch) ￼
-5 s	– 8.52	+2.00	1.27 × faster ￼
-10 s	– 9.73	+2.33	1.22 × faster
-30 s	OOM	+3.52	✅ trains (46 min/epoch)
+To overcome these limitations, this work introduces **Performer with FAVOR+ attention** and **Audio MAE pre-training** for efficient global context modeling in music separation.
 
-•	+3 – 13 dB absolute gain over ConvTasNet across lengths. ￼
-•	No OOM on 30 s thanks to linear attention. ￼
+## 🧠 Key Ideas
 
-Ablation – Removing Audio MAE boosts short-segment SI-SNR but loses memory savings (OOM at 30 s). ￼
+- **MixIT Framework**: Self-supervised training by matching combinations of model outputs to original mixtures using MixIT loss
+- **Performer Architecture**: Replaces standard self-attention with FAVOR+ (Fast Attention Via Positive Orthogonal Random Features), reducing complexity from O(L²) to O(L·r)
+- **Audio MAE Pre-training**: Masks portions of input audio and reconstructs them to learn robust global audio representations
+- **Segment-wise Processing**: Processes fixed-length chunks (3s, 5s, 10s, 30s) to learn both local and global patterns
+- **Scale-Invariant SNR**: Evaluation metric for separation quality
 
-⸻
+**FAVOR+ Attention Formula**:
+```
+Attention(Q, K, V) ≈ φ(Q) [φ(K)ᵀV]
+```
+where φ(·) is an orthogonal random feature mapping.
 
-📌 Why MixPerformer?
+**SI-SNR Calculation**:
+```
+SI-SNR(ŝ, s) = 10 log₁₀(||s_target||² / ||e_noise||²)
+```
 
-Feature	MixPerformer	ConvTasNet
-Global context	✅ Performer attention	❌ Local conv
-Self-supervised	✅ MixIT	✅
-Handles 30 s audio	✅ Fits GPU	❌ OOM
-Training time	↓ 20–30 %	–
-Mask interpretability	✅ Diversity + Sparsity losses	⚠️ Overlapping masks
+## 🧪 Datasets & Settings
 
-Key findings summarised in the paper confirm performance, efficiency and global-context advantages. ￼
+The model is evaluated on:
 
-⸻
+- **MOISESDB Dataset**
+  - ~500 hours of music with multi-instrument splits
+  - Restricted to songs with ≤4 stems to match MixIT conditions
+  - Segment lengths: 3s, 5s, 10s, 30s
+  - 80/20 train/validation split
 
-📉 Current Limitations
-•	Small corpus (≈ 10 h) ⇒ over-fitting; val/test SI-SNR can drop below 0 dB. ￼
-•	Linear attention compression may lose fine details; up-sampling refinements planned. ￼
-•	Fixed output count (N=8); dynamic source estimation is future work. ￼
+## ⚙️ Implementation Details
 
-⸻
+- **MixIT Configuration**: M = 8 masks, Batch size = 4
+- **Optimizer**: AdamW (LR = 10⁻⁴, weight decay = 0.01)
+- **Audio MAE**: 30% masking ratio, 12 Performer layers, 256 random features
+- **Hardware**: NVIDIA Tesla V100 (32 GB)
+- **STFT Parameters**: FFT size = 1024, Hop size = 256, Hann window
 
-🔮 Roadmap
-1.	Scale pre-training to 100 – 1000 h diverse music. ￼
-2.	Multi-metric eval (SDR, PESQ, SI-SDR). ￼
-3.	Stereo / 5.1 & real-time extensions for live performance. ￼
+## 🏆 Results
 
-⸻
+### Performance Comparison (SI-SNR in dB)
 
-Built with ❤️ by Team 4 (Yunyoung Lee et al.).
+| Segment Length | ConvTasNet | Performer | Improvement |
+|---------------|------------|-----------|-------------|
+| 3s            | -9.11      | +1.66     | +10.77 dB   |
+| 5s            | -8.52      | +2.00     | +10.52 dB   |
+| 10s           | -9.73      | +2.33     | +12.06 dB   |
+| 30s           | OOM Error  | +3.52     | N/A         |
+
+### Training Efficiency (Minutes per Epoch)
+
+| Segment Length | ConvTasNet | Performer | Speed-up |
+|---------------|------------|-----------|----------|
+| 3s            | 17.05      | 12.57     | 26% faster |
+| 5s            | 20.33      | 16.04     | 21% faster |
+| 10s           | 43.25      | 35.42     | 18% faster |
+| 30s           | OOM Error  | 46.33     | N/A        |
+
+## 📌 Why This Approach?
+
+| Feature | Performer + Audio MAE | ConvTasNet |
+|---------|----------------------|------------|
+| Global context | ✅ FAVOR+ attention | ❌ Local convolutions |
+| Memory efficiency | ✅ Linear complexity | ❌ Quadratic/OOM |
+| Long sequences | ✅ Up to 30s | ❌ Fails at 30s |
+| Training speed | ✅ 18-26% faster | ❌ Slower |
+| Self-supervised | ✅ No labels needed | ⚠️ Requires labels |
+
+## 🔬 Additional Contributions
+
+### Novel Evaluation Metrics (No Ground Truth)
+- **Mask Overlapping Measure**: Assesses redundancy between estimated source masks
+- **Effective Mask Count via Entropy**: Quantifies how many masks are meaningfully used
+
+### Auxiliary Losses
+- **Diversity Loss**: Encourages mutually dissimilar masks for distinct sources
+- **Sparsity Loss**: Promotes energy concentration in fewer masks
+
+## 📉 Limitations
+
+• **Dataset Size**: Only ~10 hours of 4-stem music led to overfitting (SI-SNR_train ≈ +3-4 dB vs SI-SNR_val << 0 dB)
+
+• **Information Loss**: FAVOR+ dimensionality reduction may lose fine-grained details during masking/reconstruction
+
+• **MixIT Constraints**: Fixed N=8 output streams may not capture all sources in complex musical pieces
+
+• **Audio MAE Impact**: Ablation studies showed that removing Audio MAE sometimes yielded higher SI-SNR, suggesting potential redundancy in feature transformations
+
+## 🚀 Future Work
+
+- **Large-Scale Pretraining**: Scale to 100-1000 hours of diverse music data
+- **Multi-Scale Feature Fusion**: Combine low-level and high-level representations during decoding
+- **Dynamic Source Estimation**: Adaptive mechanism for estimating number of active sources
+- **Multi-Channel Extension**: Extend to stereo and surround audio formats
+- **Real-Time Applications**: Evaluate feasibility for live performance and broadcasting
