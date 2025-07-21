@@ -11,8 +11,8 @@ MixPerformer is a self-supervised framework that swaps the CNN-based ConvTasNet 
 ⸻
 
 🚨 Motivation
-	•	Local-only CNN limits – ConvTasNet excels at short-range features but struggles with long rhythmic or harmonic structures typical of music. ￼
-	•	Memory & scalability – ConvTasNet breaks on long (30 s) segments with CUDA OOM, blocking high-fidelity separation. ￼
+•	Local-only CNN limits – ConvTasNet excels at short-range features but struggles with long rhythmic or harmonic structures typical of music. ￼
+•	Memory & scalability – ConvTasNet breaks on long (30 s) segments with CUDA OOM, blocking high-fidelity separation. ￼
 
 ⸻
 
@@ -28,16 +28,16 @@ Auxiliary Diversity & Sparsity losses	Reduce mask overlap and encourage energy c
 ⸻
 
 🧪 Datasets & Protocols
-	•	MOISESDB (≈ 500 h) – four-stem songs only. ￼
-	•	Segment lengths : 3 s, 5 s, 10 s, 30 s. ￼
-	•	Train / Val split : 80 % / 20 %. ￼
+•	MOISESDB (≈ 500 h) – four-stem songs only. ￼
+•	Segment lengths : 3 s, 5 s, 10 s, 30 s. ￼
+•	Train / Val split : 80 % / 20 %. ￼
 
 ⸻
 
 ⚙️ Implementation Details
-	•	Masks (N) : 8 • Batch : 4 • LR : 1 e-4 → 1 e-5 cosine • Opt : AdamW (wd = 0.01) ￼
-	•	Audio MAE : 30 % masking, 256 random features. ￼
-	•	Hardware : single Tesla V100 32 GB. ￼
+•	Masks (N) : 8 • Batch : 4 • LR : 1 e-4 → 1 e-5 cosine • Opt : AdamW (wd = 0.01) ￼
+•	Audio MAE : 30 % masking, 256 random features. ￼
+•	Hardware : single Tesla V100 32 GB. ￼
 
 ⸻
 
@@ -49,8 +49,8 @@ Segment	ConvTasNet SI-SNR (dB)	Performer SI-SNR (dB)	Speed-up
 10 s	– 9.73	+2.33	1.22 × faster
 30 s	OOM	+3.52	✅ trains (46 min/epoch)
 
-	•	+3 – 13 dB absolute gain over ConvTasNet across lengths. ￼
-	•	No OOM on 30 s thanks to linear attention. ￼
+•	+3 – 13 dB absolute gain over ConvTasNet across lengths. ￼
+•	No OOM on 30 s thanks to linear attention. ￼
 
 Ablation – Removing Audio MAE boosts short-segment SI-SNR but loses memory savings (OOM at 30 s). ￼
 
@@ -70,16 +70,16 @@ Key findings summarised in the paper confirm performance, efficiency and global-
 ⸻
 
 📉 Current Limitations
-	•	Small corpus (≈ 10 h) ⇒ over-fitting; val/test SI-SNR can drop below 0 dB. ￼
-	•	Linear attention compression may lose fine details; up-sampling refinements planned. ￼
-	•	Fixed output count (N=8); dynamic source estimation is future work. ￼
+•	Small corpus (≈ 10 h) ⇒ over-fitting; val/test SI-SNR can drop below 0 dB. ￼
+•	Linear attention compression may lose fine details; up-sampling refinements planned. ￼
+•	Fixed output count (N=8); dynamic source estimation is future work. ￼
 
 ⸻
 
 🔮 Roadmap
-	1.	Scale pre-training to 100 – 1000 h diverse music. ￼
-	2.	Multi-metric eval (SDR, PESQ, SI-SDR). ￼
-	3.	Stereo / 5.1 & real-time extensions for live performance. ￼
+1.	Scale pre-training to 100 – 1000 h diverse music. ￼
+2.	Multi-metric eval (SDR, PESQ, SI-SDR). ￼
+3.	Stereo / 5.1 & real-time extensions for live performance. ￼
 
 ⸻
 
